@@ -1,35 +1,82 @@
 import numpy as np
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
+from sympy import symbols, Eq, solve
 
-t_span = (0, 10)
-t_steps = np.linspace(t_span[0], t_span[1], 1000)
 
-initial_conditions_spring = [0, 1] 
-initial_conditions_pendulum = [np.pi/4, 0] 
 
-def spring_mass_damper_system(t, y):
-    return [y[1], -y[0] - y[1]]
+# Function for the Symplectic Euler method
+def symplectic_euler_spring_mass_damper(y, dt):
+    x, v = y
+    v_new = v + dt * (-x - v)
+    x_new = x + dt * v_new
+    return np.array([x_new, v_new])
 
-def planar_pendulum_system(t, z):
-    return [z[1], -np.sin(z[0])]
+# Analytical solution function for Spring-Mass-Damper system
+def analytical_solution_smd(t, x0, v0):
+    return np.exp(-0.5 * t) * (x0 * np.cos(np.sqrt(3)/2 * t) + (v0 + 0.5 * x0) / (np.sqrt(3)/2) * np.sin(np.sqrt(3)/2 * t))
 
-solution_spring = solve_ivp(spring_mass_damper_system, t_span, initial_conditions_spring, t_eval=t_steps)
-solution_pendulum = solve_ivp(planar_pendulum_system, t_span, initial_conditions_pendulum, t_eval=t_steps)
+# Perform Symplectic Euler simulation
+y_symplectic = np.zeros((len(t_explicit), 2))
+y_symplectic[0] = y0
 
-plt.figure(figsize=(12, 6))
+for i in range(1, len(t_explicit)):
+    y_symplectic[i] = symplectic_euler_spring_mass_damper(y_symplectic[i - 1], dt)
 
-plt.subplot(1, 2, 1)
-plt.plot(solution_spring.t, solution_spring.y[0])
-plt.title("Spring-Mass-Damper System")
-plt.xlabel("Time")
-plt.ylabel("Displacement")
+# Analytical solution
+x_analytical_corrected = analytical_solution_smd(t_analytical, x0, v0)
 
-plt.subplot(1, 2, 2)
-plt.plot(solution_pendulum.t, solution_pendulum.y[0])
-plt.title("Planar Pendulum")
-plt.xlabel("Time")
-plt.ylabel("Angle θ")
+# Plotting in a 3x2 grid
+plt.figure(figsize=(18, 12))
+
+# Explicit Euler
+plt.subplot(3, 2, 1)
+plt.plot(t_explicit, y_explicit[:, 0], label='Explicit Euler')
+plt.plot(t_analytical, x_analytical_corrected, label='Analytical Solution', linestyle='dashed')
+plt.title('Explicit Euler vs Analytical Solution')
+plt.xlabel('Time (s)')
+plt.ylabel('Position (x)')
+plt.legend()
+
+# Error for Explicit Euler
+plt.subplot(3, 2, 2)
+plt.plot(t_explicit, np.abs(y_explicit[:, 0] - np.interp(t_explicit, t_analytical, x_analytical_corrected)))
+plt.title('Error in Explicit Euler')
+plt.xlabel('Time (s)')
+plt.ylabel('Error')
+
+# Implicit Euler
+plt.subplot(3, 2, 3)
+plt.plot(t_implicit, y_implicit[:, 0], label='Implicit Euler')
+plt.plot(t_analytical, x_analytical_corrected, label='Analytical Solution', linestyle='dashed')
+plt.title('Implicit Euler vs Analytical Solution')
+plt.xlabel('Time (s)')
+plt.ylabel('Position (x)')
+plt.legend()
+
+# Error for Implicit Euler
+plt.subplot(3, 2, 4)
+plt.plot(t_implicit, np.abs(y_implicit[:, 0] - np.interp(t_implicit, t_analytical, x_analytical_corrected)))
+plt.title('Error in Implicit Euler')
+plt.xlabel('Time (s)')
+plt.ylabel('Error')
+
+# Symplectic Euler
+plt.subplot(3, 2, 5)
+plt.plot(t_explicit, y_symplectic[:, 0], label='Symplectic Euler')
+plt.plot(t_analytical, x_analytical_corrected, label='Analytical Solution', linestyle='dashed')
+plt.title('Symplectic Euler vs Analytical Solution')
+plt.xlabel('Time (s)')
+plt.ylabel('Position (x)')
+plt.legend()
+
+# Error for Symplectic Euler
+plt.subplot(3, 2, 6)
+plt.plot(t_explicit, np.abs(y_symplectic[:, 0] - np.interp(t_explicit, t_analytical, x_analytical_corrected)))
+plt.title('Error in Symplectic Euler')
+plt.xlabel('Time (s)')
+plt.ylabel('Error')
 
 plt.tight_layout()
 plt.show()
+
